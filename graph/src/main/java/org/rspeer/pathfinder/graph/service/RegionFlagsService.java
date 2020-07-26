@@ -29,8 +29,7 @@ public class RegionFlagsService {
     private Rectangle bounds;
 
     public int getFlagFor(Position position) {
-        int id = regionService.locationToRegionId(position.getX(), position.getY());
-        RegionFlags region = getFor(id);
+        RegionFlags region = getFor(position);
         if (region == null) {
             return -1;
         }
@@ -42,6 +41,11 @@ public class RegionFlagsService {
 
     public RegionFlags getFor(int id) {
         return regionFlagsCache.computeIfAbsent(id, this::getFromCache);
+    }
+
+    public RegionFlags getFor(Position position) {
+        int id = regionService.locationToRegionId(position.getX(), position.getY());
+        return getFor(id);
     }
 
     private RegionFlags getFromCache(int id) {

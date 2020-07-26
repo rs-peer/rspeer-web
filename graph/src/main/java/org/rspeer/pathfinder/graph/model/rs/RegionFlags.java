@@ -2,11 +2,15 @@ package org.rspeer.pathfinder.graph.model.rs;
 
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
+import lombok.ToString;
 import org.rspeer.pathfinder.graph.util.MapFlags;
 
 @RequiredArgsConstructor
 @Getter
+@ToString(exclude = {"flags"})
 public class RegionFlags {
+
+    private static final int REGION_SIZE = 64;
 
     private final int id;
 
@@ -30,5 +34,14 @@ public class RegionFlags {
         }
 
         addFlag(regionX, regionY, location.getLevel(), flag);
+    }
+
+    public boolean contains(Position position) {
+        return position.getX() >= baseX && position.getY() >= baseY &&
+                position.getX() < baseX + REGION_SIZE && position.getY() < baseY + REGION_SIZE;
+    }
+
+    public int getFlag(Position position) {
+        return flags[position.getLevel()][position.getX()][position.getY()];
     }
 }

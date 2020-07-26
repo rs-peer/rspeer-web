@@ -23,5 +23,6 @@
         <module>generator</module>
         <module>cache-extraction</module>
         <module>configuration</module>
+        <module>graph</module>
     </modules>
 </project>

@@ -6,6 +6,12 @@ import lombok.Setter;
 import lombok.ToString;
 import lombok.experimental.Accessors;
 
+import java.util.Arrays;
+import java.util.List;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
 @Getter
 @Setter
 @Accessors(chain = true)
@@ -46,5 +52,14 @@ public class Position {
                 .setX(this.x + dx)
                 .setY(this.y + dy)
                 .setLevel(this.level + level);
+    }
+
+    public List<Position> getNeighbouringPositions(Predicate<Position> filter) {
+        return Stream.of(
+                translate(-1, 0),
+                translate(1, 0),
+                translate(0, 1),
+                translate(0, -1)
+        ).filter(filter).collect(Collectors.toList());
     }
 }

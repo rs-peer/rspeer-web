@@ -126,7 +126,7 @@ public class HpaNode implements Node {
     }
 
     public boolean isLeaf() {
-        return getChildren().size() == 0;
+        return getWidth() == 1;
     }
 
     @Override
