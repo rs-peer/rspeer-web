@@ -59,7 +59,7 @@ public class SceneEntityService {
             return false;
         }
 
-        return PLANE_CHANGE_NAMES.contains(definition.getName());
+        return PLANE_CHANGE_NAMES.contains(definition.getName().toLowerCase());
     }
 
     public PlaneChange getPlaneChange(SceneEntityDefinition definition) {

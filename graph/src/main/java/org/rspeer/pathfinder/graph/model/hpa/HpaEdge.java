@@ -1,9 +1,11 @@
 package org.rspeer.pathfinder.graph.model.hpa;
 
 import lombok.AllArgsConstructor;
+import lombok.EqualsAndHashCode;
 import org.rspeer.pathfinder.graph.model.graph.Edge;
 
 @AllArgsConstructor
+@EqualsAndHashCode
 public class HpaEdge implements Edge {
 
     private final HpaNode start;
@@ -21,6 +23,6 @@ public class HpaEdge implements Edge {
 
     @Override
     public double getCost() {
-        return 0;
+        return 1;
     }
 }

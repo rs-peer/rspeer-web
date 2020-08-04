@@ -4,7 +4,7 @@ import java.util.Set;
 
 public interface Node {
 
-    Set<Edge> outgoing();
+    Set<? extends Edge> outgoing();
 
-    Set<Edge> incoming();
+    Set<? extends Edge> incoming();
 }

@@ -41,6 +41,10 @@ public class RegionFlags {
                 position.getX() < baseX + REGION_SIZE && position.getY() < baseY + REGION_SIZE;
     }
 
+    public int getFlagRebase(Position position) {
+        return getFlag(position.translate(-baseX, -baseY));
+    }
+
     public int getFlag(Position position) {
         return flags[position.getLevel()][position.getX()][position.getY()];
     }

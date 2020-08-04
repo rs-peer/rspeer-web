@@ -18,5 +18,7 @@ public class Configuration {
         public static final Path REGION_DIR = HOME_DIR.resolve("regions");
         public static final Path FLAGS_DIR = HOME_DIR.resolve("flags");
         public static final Path SCENE_ENTITY_DIR = HOME_DIR.resolve("scene-entities");
+        public static final Path MAP_IMAGE_DIR = HOME_DIR.resolve("map-images");
+
     }
 }

@@ -1,8 +1,10 @@
 package org.rspeer.pathfinder.cacheextraction;
 
 import com.google.gson.Gson;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.cache.Cache;
+import net.runelite.cache.MapImageDumper;
 import net.runelite.cache.ObjectManager;
 import net.runelite.cache.definitions.ObjectDefinition;
 import net.runelite.cache.fs.Store;
@@ -11,12 +13,10 @@ import net.runelite.cache.region.RegionLoader;
 import org.rspeer.pathfinder.configuration.Configuration;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 
-import java.io.BufferedWriter;
+import java.awt.image.BufferedImage;
 import java.io.File;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -24,18 +24,21 @@ import java.nio.file.Paths;
 
 @Component
 @Slf4j
+@RequiredArgsConstructor
 public class CacheExtractionRunner implements ApplicationRunner {
 
     private static final File STORE_LOCATION = Paths.get(System.getProperty("user.home"), "jagexcache",
             "oldschool", "LIVE").toFile();
+
+    private final AsyncCacheExtractor asyncCacheExtractor;
 
     @Override
     public void run(ApplicationArguments args) {
         try {
             Gson gson = new Gson();
             Store store = Cache.loadStore(STORE_LOCATION.toString());
-            dumpRegions(store, gson);
             dumpObjects(store, gson);
+            dumpRegions(store, gson);
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -47,10 +50,13 @@ public class CacheExtractionRunner implements ApplicationRunner {
             Files.createDirectories(objectsPath);
         }
 
+        store.load();
+
         ObjectManager objectManager = new ObjectManager(store);
         objectManager.load();
+
         for (ObjectDefinition objectDefinition : objectManager.getObjects()) {
-            serializeObjectDefinition(objectDefinition, gson, objectsPath);
+            asyncCacheExtractor.serializeObjectDefinition(objectDefinition, gson, objectsPath);
         }
     }
 
@@ -60,29 +66,34 @@ public class CacheExtractionRunner implements ApplicationRunner {
             Files.createDirectories(regionsPath);
         }
 
+        Path imgPath = Configuration.Locations.MAP_IMAGE_DIR;
+        if (!Files.exists(imgPath)) {
+            Files.createDirectories(imgPath);
+        }
+
+        store.load();
+
+        MapImageDumper imageDumper = new MapImageDumper(store);
+        imageDumper.load();
+
         RegionLoader regionLoader = new RegionLoader(store);
         regionLoader.loadRegions();
         for (Region region : regionLoader.getRegions()) {
-            serializeRegion(region, gson, regionsPath);
+            asyncCacheExtractor.serializeRegion(region, gson, regionsPath);
+            asyncCacheExtractor.dumpMapImage(region, imageDumper, imgPath);
         }
     }
 
-    @Async("runtimePool")
-    public void serializeObjectDefinition(ObjectDefinition objectDefinition, Gson gson, Path base) throws IOException {
-        File objectFile = base.resolve(String.format("%d.json", objectDefinition.getId())).toFile();
-        try (BufferedWriter writer = new BufferedWriter(new FileWriter(objectFile))) {
-            log.info("Object {} serialized", objectDefinition.getId());
-            gson.toJson(objectDefinition, writer);
+    private void dumpMapImages(Store store) throws IOException {
+        Path imgPath = Configuration.Locations.MAP_IMAGE_DIR;
+        if (!Files.exists(imgPath)) {
+            Files.createDirectories(imgPath);
         }
-    }
 
-    @Async("runtimePool")
-    public void serializeRegion(Region region, Gson gson, Path base) throws IOException {
-        File regionFile = base.resolve(region.getRegionID() + ".json").toFile();
-        try (BufferedWriter writer = new BufferedWriter(new FileWriter(regionFile))) {
-            log.info("Region {} serialized", region.getRegionID());
-            gson.toJson(region, writer);
-        }
+        store.load();
+        MapImageDumper imageDumper = new MapImageDumper(store);
+        imageDumper.load();
+
     }
 
 }

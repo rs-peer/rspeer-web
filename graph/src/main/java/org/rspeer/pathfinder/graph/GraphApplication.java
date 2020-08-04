@@ -7,6 +7,8 @@ import org.rspeer.pathfinder.graph.model.rs.Position;
 import org.rspeer.pathfinder.graph.model.rs.serialize.PositionDeserializer;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.builder.SpringApplicationBuilder;
+import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Import;
@@ -21,7 +23,9 @@ import java.util.concurrent.Executors;
 public class GraphApplication {
 
     public static void main(String[] args) {
-        SpringApplication.run(GraphApplication.class, args).close();
+        SpringApplicationBuilder builder = new SpringApplicationBuilder(GraphApplication.class);
+        builder.headless(false);
+        ConfigurableApplicationContext context = builder.run(args);
     }
 
     @Bean

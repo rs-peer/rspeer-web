@@ -47,9 +47,9 @@ public class XteaKeyManager {
         JsonArray arr = gson.fromJson(new InputStreamReader(getClass().getResourceAsStream("/xteas.json")), JsonArray.class);
         for (JsonElement element : arr) {
             JsonObject object = element.getAsJsonObject();
-            int region = object.get("region").getAsInt();
+            int region = object.get("mapsquare").getAsInt();
             int[] keys = new int[4];
-            JsonArray keyA = object.get("keys").getAsJsonArray();
+            JsonArray keyA = object.get("key").getAsJsonArray();
             for (int i = 0; i < 4; i++) {
                 keys[i] = keyA.get(i).getAsInt();
             }

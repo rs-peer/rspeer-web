@@ -5,7 +5,11 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.ComponentScan;
 
 @SpringBootApplication
-@ComponentScan(basePackages = "org.rspeer.pathfinder")
+@ComponentScan(
+        basePackages = {
+                "org.rspeer.pathfinder.graph.service", "org.rspeer.pathfinder.generator", "org.rspeer.pathfinder.graph.algorithm"
+        }
+)
 public class GeneratorApplication {
 
     public static void main(String[] args) {

@@ -12,7 +12,7 @@
     <artifactId>generator</artifactId>
     <version>0.0.1-SNAPSHOT</version>
     <name>generator</name>
-    <description>RSPeer pathfinder</description>
+    <description>RSPeer flags generator</description>
 
     <properties>
         <java.version>11</java.version>

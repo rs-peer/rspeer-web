@@ -2,11 +2,9 @@ package org.rspeer.pathfinder.generator.service;
 
 import com.google.gson.Gson;
 import lombok.AllArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.rspeer.pathfinder.configuration.Configuration;
-import org.rspeer.pathfinder.graph.model.rs.LocationObject;
-import org.rspeer.pathfinder.graph.model.rs.Region;
-import org.rspeer.pathfinder.graph.model.rs.RegionFlags;
-import org.rspeer.pathfinder.graph.model.rs.SceneEntityDefinition;
+import org.rspeer.pathfinder.graph.model.rs.*;
 import org.rspeer.pathfinder.graph.service.RegionService;
 import org.rspeer.pathfinder.graph.service.SceneEntityService;
 import org.rspeer.pathfinder.graph.util.MapFlags;
@@ -23,6 +21,7 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
 @Service
+@Slf4j
 @AllArgsConstructor
 public class FlagsGeneratorService {
 
@@ -66,23 +65,29 @@ public class FlagsGeneratorService {
                 .join();
     }
 
-    @Async("executorPool")
+    @Async
     public CompletableFuture<RegionFlags> generateFlagsFor(Region region) {
         RegionFlags flags = new RegionFlags(region.getRegionID(), region.getBaseX(), region.getBaseY());
         for (int plane = 0; plane < Region.Z; plane++) {
             for (int regionX = 0; regionX < Region.X; regionX++) {
                 for (int regionY = 0; regionY < Region.Y; regionY++) {
                     int setting = region.getTileSettings()[plane][regionX][regionY];
+                    int underlay = region.getUnderlayIds()[plane][regionX][regionY];
+                    int overlay = region.getOverlayIds()[plane][regionX][regionY];
+                    int height = region.getTileHeights()[plane][regionX][regionY];
+                    int rotation = region.getOverlayRotations()[plane][regionX][regionY];
+                    int path = region.getOverlayPaths()[plane][regionX][regionY];
 
                     boolean bridge = plane + 1 < 4 && (region.getTileSettings()[plane + 1][regionX][regionY] == 2);
-                    if (!bridge && setting == 1) {
+                    boolean isNull = setting == 0 && underlay == 0 && overlay == 0;// && height == 0; //&& rotation == 0 && path == 0;
+                    if (!bridge && setting == 1 || isNull) {
                         //blocked
                         flags.addFlag(regionX, regionY, plane, MapFlags.BLOCKED_SETTING);
                     } else {
                         //walkable
                         flags.addFlag(regionX, regionY, plane, MapFlags.OPEN_SETTINGS);
                     }
-                    if (region.getOverlayIds()[plane][regionX][regionY] == 0) {
+                    if (overlay == 0) {
                         flags.addFlag(regionX, regionY, plane, MapFlags.NO_OVERLAY);
                     }
                 }
@@ -248,19 +253,20 @@ public class FlagsGeneratorService {
 
                                 for (int xOff = 0; xOff < width; xOff++) {
                                     for (int yOff = 0; yOff < length; yOff++) {
-                                        flags.addFlag(location.getPosition().translate(xOff, yOff), MapFlags.BLOCKED_SCENE_OBJECT);
+                                        Position translated = location.getPosition().translate(xOff, yOff);
+                                        flags.addFlag(translated, MapFlags.BLOCKED_SCENE_OBJECT);
 
                                         if (override)
-                                            flags.addFlag(location.getPosition().translate(xOff, yOff), MapFlags.OPEN_OVERRIDE);
+                                            flags.addFlag(translated, MapFlags.OPEN_OVERRIDE);
 
                                         if (up || down) {
-                                            flags.addFlag(location.getPosition().translate(xOff, yOff), MapFlags.OPEN_OVERRIDE_END);
-                                            flags.addFlag(location.getPosition().translate(xOff, yOff), MapFlags.OPEN_OVERRIDE_START);
+                                            flags.addFlag(translated, MapFlags.OPEN_OVERRIDE_END);
+                                            flags.addFlag(translated, MapFlags.OPEN_OVERRIDE_START);
                                         }
                                         if (up)
-                                            flags.addFlag(location.getPosition().translate(xOff, yOff), MapFlags.PLANE_CHANGE_UP);
+                                            flags.addFlag(translated, MapFlags.PLANE_CHANGE_UP);
                                         if (down)
-                                            flags.addFlag(location.getPosition().translate(xOff, yOff), MapFlags.PLANE_CHANGE_DOWN);
+                                            flags.addFlag(translated, MapFlags.PLANE_CHANGE_DOWN);
                                     }
                                 }
                             }

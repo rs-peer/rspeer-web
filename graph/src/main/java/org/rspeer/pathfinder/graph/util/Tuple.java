@@ -6,9 +6,9 @@ import org.rspeer.pathfinder.graph.model.rs.Position;
 
 @AllArgsConstructor
 @Getter
-public class PositionTuple {
+public class Tuple<T> {
 
-    private final Position first;
-    private final Position second;
+    private final T first;
+    private final T second;
 
 }

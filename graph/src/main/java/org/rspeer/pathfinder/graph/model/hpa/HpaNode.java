@@ -18,10 +18,10 @@ import java.util.Set;
 public class HpaNode implements Node {
 
     @Getter(value = AccessLevel.PRIVATE)
-    private final Set<Edge> outgoing = new HashSet<>();
+    private final Set<HpaEdge> outgoing = new HashSet<>();
 
     @Getter(value = AccessLevel.PRIVATE)
-    private final Set<Edge> incoming = new HashSet<>();
+    private final Set<HpaEdge> incoming = new HashSet<>();
 
     private final Set<HpaNode> children = new HashSet<>();
     private final Position root;
@@ -74,6 +74,10 @@ public class HpaNode implements Node {
         return contains(child.getRoot());
     }
 
+    public void remove(HpaNode removing) {
+        children.remove(removing);
+    }
+
     public void addChild(HpaNode toAdd) {
         if (getWidth() == 1) {
             throw new RuntimeException("Cannot add children to a leaf node");
@@ -96,6 +100,11 @@ public class HpaNode implements Node {
 
     public void addExternalEdge(HpaNode to, boolean bidirectional) {
         addEdge(to, bidirectional);
+
+        // Only want to go to parents if they are different (external)
+        if (this.getParent() == to.getParent()) {
+            return;
+        }
 
         if (this.getParent() != null
                 && to.getParent() != null) {
@@ -135,12 +144,12 @@ public class HpaNode implements Node {
     }
 
     @Override
-    public Set<Edge> outgoing() {
+    public Set<HpaEdge> outgoing() {
         return outgoing;
     }
 
     @Override
-    public Set<Edge> incoming() {
+    public Set<HpaEdge> incoming() {
         return incoming;
     }
 }

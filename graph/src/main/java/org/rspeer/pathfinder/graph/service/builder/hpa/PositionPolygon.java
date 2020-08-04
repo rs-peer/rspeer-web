@@ -1,6 +1,7 @@
 package org.rspeer.pathfinder.graph.service.builder.hpa;
 
 import org.rspeer.pathfinder.graph.model.rs.Position;
+import org.rspeer.pathfinder.graph.model.rs.RegionFlags;
 
 import java.util.HashSet;
 import java.util.Objects;
@@ -8,7 +9,7 @@ import java.util.Set;
 
 public class PositionPolygon {
 
-    private static final int MAX_POL_SIZE = 32;
+    public static final int MAX_POL_SIZE = 14;
 
     private final Position root;
     private final Set<Position> positions = new HashSet<>();
@@ -49,14 +50,12 @@ public class PositionPolygon {
     }
 
     public void addEdge(PositionPolygon to) {
+        if (to == this) {
+            return;
+        }
+
         this.edges.add(to);
         to.edges.add(this);
-    }
-
-    public Position getCentroid() {
-        int x = minX + getWidth() / 2;
-        int y = minY + getHeight() / 2;
-        return new Position(x, y, root.getLevel());
     }
 
     @Override
@@ -74,5 +73,9 @@ public class PositionPolygon {
 
     public Set<PositionPolygon> getEdges() {
         return this.edges;
+    }
+
+    public Position getRoot() {
+        return root;
     }
 }

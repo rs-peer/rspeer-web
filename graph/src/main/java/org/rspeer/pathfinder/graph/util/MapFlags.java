@@ -1,7 +1,12 @@
 package org.rspeer.pathfinder.graph.util;
 
+import org.rspeer.pathfinder.graph.model.rs.CollectiveFlagsProvider;
+import org.rspeer.pathfinder.graph.model.rs.Direction;
+import org.rspeer.pathfinder.graph.model.rs.Position;
+
 import java.lang.reflect.Field;
 import java.util.StringJoiner;
+import java.util.function.Predicate;
 
 public class MapFlags {
 
@@ -53,6 +58,69 @@ public class MapFlags {
 
     public static boolean isBlocked(int flag) {
         return check(flag, BLOCKED_22 | BLOCKED_SETTING | BLOCKED_ROOF | BLOCKED_SCENE_OBJECT);
+    }
+
+    public static Predicate<Position> isWalkableFrom(Position from, CollectiveFlagsProvider flagsProvider, boolean ignoreStartBlocked, boolean ignoreDoors) {
+        return to -> {
+            Direction between = getDirectionBetween(from, to);
+            Integer fromFlag = flagsProvider.apply(from);
+            Integer toFlag = flagsProvider.apply(to);
+            if (fromFlag == null || toFlag == null) {
+                return false;
+            }
+
+            if (check(DOOR_FLAG, fromFlag) && ignoreDoors) {
+                fromFlag = OPEN_SETTINGS;
+            }
+
+            if (check(DOOR_FLAG, toFlag) && ignoreDoors) {
+                toFlag = OPEN_SETTINGS;
+            }
+
+            return checkWalkable(between, fromFlag, toFlag, ignoreStartBlocked);
+        };
+    }
+
+    public static boolean checkWalkable(Direction dir, int startFlag, int endFLag, boolean ignoreStartBlocked) {
+
+        if (isBlocked(endFLag) || (!ignoreStartBlocked && isBlocked(startFlag))) {
+            return false;
+        }
+
+        switch (dir) {
+            case NORTH:
+                if (check(startFlag, WALL_NORTH)) {
+                    return false;
+                }
+                break;
+            case SOUTH:
+                if (check(startFlag, WALL_SOUTH)) {
+                    return false;
+                }
+                break;
+            case WEST:
+                if (check(startFlag, WALL_WEST)) {
+                    return false;
+                }
+                break;
+            case EAST:
+                if (check(startFlag, WALL_EAST)) {
+                    return false;
+                }
+                break;
+        }
+        return true;
+    }
+
+    public static Direction getDirectionBetween(Position from, Position to) {
+        Position diff = to.translate(-from.getX(), -from.getY());
+        for (Direction dir : Direction.values()) {
+            if (dir.getXOff() == diff.getX() && dir.getYOff() == diff.getY()) {
+                return dir;
+            }
+        }
+
+        return null;
     }
 
     public static String toString(int flag) {

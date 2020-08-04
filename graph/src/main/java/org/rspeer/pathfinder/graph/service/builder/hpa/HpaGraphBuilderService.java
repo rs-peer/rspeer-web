@@ -2,47 +2,65 @@ package org.rspeer.pathfinder.graph.service.builder.hpa;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.rspeer.pathfinder.graph.model.graph.Graph;
 import org.rspeer.pathfinder.graph.model.hpa.HpaGraph;
 import org.rspeer.pathfinder.graph.model.hpa.HpaNode;
 import org.rspeer.pathfinder.graph.model.rs.Position;
 import org.rspeer.pathfinder.graph.model.rs.Region;
 import org.rspeer.pathfinder.graph.service.RegionFlagsService;
 import org.rspeer.pathfinder.graph.service.builder.IGraphBuilderService;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+import org.springframework.util.concurrent.ListenableFuture;
 
 import java.awt.*;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+import java.util.stream.Collectors;
 
 @RequiredArgsConstructor
 @Service
 @Slf4j
-public class HpaGraphBuilderService implements IGraphBuilderService<HpaNode> {
+public class HpaGraphBuilderService implements IGraphBuilderService {
 
-    private static final int HIGHEST_REGION_SIZE = 640;
+    private static final int HIGHEST_REGION_SIZE = 320;
 
     private final RegionFlagsService regionFlagsService;
     private final AsyncHpaGraphBuilderService graphBuilderAsync;
 
-    public Graph<HpaNode> build() {
+    @Override
+    public HpaGraph build() {
         long ms = System.currentTimeMillis();
         regionFlagsService.loadAllIntoMemory();
         Map<Integer, HpaNode> rootNodes = buildRegions();
         HpaGraph graph = new HpaGraph(rootNodes);
         log.info("Generating internal nodes for {} root nodes", rootNodes.size());
-        rootNodes.values().stream().map(node -> graphBuilderAsync.addConnections(node, graph)).forEach(it -> {
+        Collection<ListenableFuture<Void>> futures = rootNodes.values().stream()
+                .map(node -> graphBuilderAsync.addAllInternal(node, graph))
+                .collect(Collectors.toList());
+
+        for (ListenableFuture<?> future : futures) {
             try {
-                it.get();
+                future.get();
             } catch (InterruptedException | ExecutionException e) {
                 e.printStackTrace();
             }
-        });
+        }
+        //graph.getNodes().forEach(graphBuilderAsync::prune);
+        log.info("Generating external nodes for {} internal nodes", graphBuilderAsync.getAtomicNodes());
+        futures = rootNodes.values().stream()
+                .map(node -> graphBuilderAsync.addAllExternal(node, graph))
+                .collect(Collectors.toList());
+        for (ListenableFuture<?> future : futures) {
+            try {
+                future.get();
+            } catch (InterruptedException | ExecutionException e) {
+                e.printStackTrace();
+            }
+        }
 
         log.info("Added {} nodes in {}ms", graphBuilderAsync.getAtomicNodes(), System.currentTimeMillis() - ms);
+
         return graph;
     }
 
@@ -66,9 +84,9 @@ public class HpaGraphBuilderService implements IGraphBuilderService<HpaNode> {
         int x = node.getRoot().getX();
         int y = node.getRoot().getY();
         int level = node.getRoot().getLevel();
-        for (int xd = 0; xd < HIGHEST_REGION_SIZE; xd += HIGHEST_REGION_SIZE / 10) {
-            for (int yd = 0; yd < HIGHEST_REGION_SIZE; yd += HIGHEST_REGION_SIZE / 10) {
-                HpaNode child = new HpaNode(new Position(x + xd, y + yd, level), HIGHEST_REGION_SIZE / 10, HIGHEST_REGION_SIZE / 10);
+        for (int xd = 0; xd < HIGHEST_REGION_SIZE; xd += HIGHEST_REGION_SIZE / 5) {
+            for (int yd = 0; yd < HIGHEST_REGION_SIZE; yd += HIGHEST_REGION_SIZE / 5) {
+                HpaNode child = new HpaNode(new Position(x + xd, y + yd, level), HIGHEST_REGION_SIZE / 5, HIGHEST_REGION_SIZE / 5);
                 node.addChild(child);
             }
         }

@@ -24,5 +24,6 @@
         <module>cache-extraction</module>
         <module>configuration</module>
         <module>graph</module>
+        <module>pathing</module>
     </modules>
 </project>

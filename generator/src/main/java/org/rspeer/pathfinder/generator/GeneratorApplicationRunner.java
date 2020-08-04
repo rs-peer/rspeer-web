@@ -2,6 +2,7 @@ package org.rspeer.pathfinder.generator;
 
 import lombok.RequiredArgsConstructor;
 import org.rspeer.pathfinder.generator.service.FlagsGeneratorService;
+import org.rspeer.pathfinder.graph.service.RegionService;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.boot.SpringApplication;
