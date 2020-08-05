@@ -9,14 +9,11 @@ import org.rspeer.pathfinder.graph.model.rs.Region;
 import org.rspeer.pathfinder.graph.service.RegionFlagsService;
 import org.rspeer.pathfinder.graph.service.builder.IGraphBuilderService;
 import org.springframework.stereotype.Service;
-import org.springframework.util.concurrent.ListenableFuture;
 
 import java.awt.*;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.ExecutionException;
-import java.util.stream.Collectors;
+import java.util.concurrent.Semaphore;
 
 @RequiredArgsConstructor
 @Service
@@ -34,29 +31,27 @@ public class HpaGraphBuilderService implements IGraphBuilderService {
         regionFlagsService.loadAllIntoMemory();
         Map<Integer, HpaNode> rootNodes = buildRegions();
         HpaGraph graph = new HpaGraph(rootNodes);
-        log.info("Generating internal nodes for {} root nodes", rootNodes.size());
-        Collection<ListenableFuture<Void>> futures = rootNodes.values().stream()
-                .map(node -> graphBuilderAsync.addAllInternal(node, graph))
-                .collect(Collectors.toList());
+        Semaphore sem = new Semaphore(0);
 
-        for (ListenableFuture<?> future : futures) {
-            try {
-                future.get();
-            } catch (InterruptedException | ExecutionException e) {
-                e.printStackTrace();
-            }
+        log.info("Generating internal nodes for {} root nodes", rootNodes.size());
+        for (HpaNode hpaNode : rootNodes.values()) {
+            graphBuilderAsync.addAllInternal(hpaNode, graph).addCallback(result -> sem.release(), exception -> sem.release());
         }
+        try {
+            sem.acquire(rootNodes.size());
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
         //graph.getNodes().forEach(graphBuilderAsync::prune);
         log.info("Generating external nodes for {} internal nodes", graphBuilderAsync.getAtomicNodes());
-        futures = rootNodes.values().stream()
-                .map(node -> graphBuilderAsync.addAllExternal(node, graph))
-                .collect(Collectors.toList());
-        for (ListenableFuture<?> future : futures) {
-            try {
-                future.get();
-            } catch (InterruptedException | ExecutionException e) {
-                e.printStackTrace();
-            }
+        for (HpaNode hpaNode : rootNodes.values()) {
+            graphBuilderAsync.addAllExternal(hpaNode, graph).addCallback(result -> sem.release(), exception -> sem.release());
+        }
+        try {
+            sem.acquire(rootNodes.size());
+        } catch (InterruptedException e) {
+            e.printStackTrace();
         }
 
         log.info("Added {} nodes in {}ms", graphBuilderAsync.getAtomicNodes(), System.currentTimeMillis() - ms);
