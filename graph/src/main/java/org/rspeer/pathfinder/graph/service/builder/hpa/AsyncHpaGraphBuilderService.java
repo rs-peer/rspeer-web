@@ -19,6 +19,7 @@ import javax.annotation.PostConstruct;
 import java.util.*;
 import java.util.function.BiPredicate;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Service
@@ -176,17 +177,53 @@ public class AsyncHpaGraphBuilderService {
         for (PositionPolygon polygon : polygonSet) {
             HpaNode polygonNode = polygonMap.get(polygon);
             node.addChild(polygonNode);
-            polygonSet.stream().filter(p ->
+            //polygonSet.stream().filter(p ->
+            //        dijkstraAlgorithm.getDistanceEvaluator().distance(polygon.getRoot(), p.getRoot()) < 18
+            //).forEach(neighbour -> {
+            //    HpaNode neighbourNode = polygonMap.get(neighbour);
+            //    if (neighbourNode == null) return;
+            //    if (dijkstraAlgorithm.isReachable(polygon.getRoot(), neighbour.getRoot(),
+            //            walkableTest, 18)) {
+            //        polygonNode.addEdge(neighbourNode, false);
+            //        log.debug("Added edge from {} to {}", polygonNode.getRoot(), neighbourNode.getRoot());
+            //    }
+            //});
+
+            var filtered = polygonSet.stream().filter(p ->
                     dijkstraAlgorithm.getDistanceEvaluator().distance(polygon.getRoot(), p.getRoot()) < 18
-            ).forEach(neighbour -> {
-                HpaNode neighbourNode = polygonMap.get(neighbour);
-                if (neighbourNode == null) return;
-                if (dijkstraAlgorithm.isReachable(polygon.getRoot(), neighbour.getRoot(),
-                        walkableTest, 18)) {
+            ).collect(Collectors.toMap(PositionPolygon::getRoot, Function.identity()));
+
+            Map<Position, Integer> score = new HashMap<>();
+            score.put(polygon.getRoot(), 0);
+            //using basic queue since priorityqueue.remove is heavy, and we dont need to always pick the lowest cost neighbor next in this case
+            Queue<Position> visiting = new LinkedList<>();
+            visiting.add(polygon.getRoot());
+
+            while (!visiting.isEmpty()) {
+                Position current = visiting.remove();
+                var existing = filtered.get(current);
+                if (existing != null && score.getOrDefault(current, Integer.MAX_VALUE) <= 18) {
+                    var neighbourNode = polygonMap.get(existing);
                     polygonNode.addEdge(neighbourNode, false);
-                    log.debug("Added edge from {} to {}", polygonNode.getRoot(), neighbourNode.getRoot());
+                    if (polygon.getEdges().size() == filtered.size()) {
+                        break;
+                    }
                 }
-            });
+
+                int currentScore = score.get(current);
+                if (currentScore > 18) {
+                    continue;
+                }
+
+                for (Position neighbour : current.getNeighbouringPositions(nb -> walkableTest.test(current, nb))) {
+                    int newScore = currentScore + 1;
+                    int neighbourScore = score.getOrDefault(neighbour, Integer.MAX_VALUE);
+                    if (newScore < neighbourScore) {
+                        score.put(neighbour, newScore);
+                        visiting.add(neighbour);
+                    }
+                }
+            }
         }
 
         atomicNodes.update(prev -> prev += polygonMap.size());
@@ -266,15 +303,44 @@ public class AsyncHpaGraphBuilderService {
         LinkedList<Tuple<HpaNode>> tuples = new LinkedList<>();
         for (HpaNode fromEntry : from.getChildren()) {
             HpaNode closestToEntry = null;
-            double closestDist = Double.MAX_VALUE;
-            for (HpaNode toEntry : to.getChildren()) {
-                double dist = dijkstraAlgorithm.getDistanceEvaluator().distance(from.getRoot(), toEntry.getRoot());
-                if (dist > closestDist) continue;
-                boolean isReachable = dijkstraAlgorithm.isReachable(fromEntry.getRoot(), toEntry.getRoot(),
-                        (p1, p2) -> MapFlags.isWalkableFrom(p1, cvf, true, true).test(p2), 24);
-                if (isReachable) {
-                    closestDist = dist;
-                    closestToEntry = toEntry;
+            //double closestDist = Double.MAX_VALUE;
+            //for (HpaNode toEntry : to.getChildren()) {
+            //    double dist = dijkstraAlgorithm.getDistanceEvaluator().distance(from.getRoot(), toEntry.getRoot());
+            //    if (dist > closestDist) continue;
+            //    boolean isReachable = dijkstraAlgorithm.isReachable(fromEntry.getRoot(), toEntry.getRoot(),
+            //            (p1, p2) -> MapFlags.isWalkableFrom(p1, cvf, true, true).test(p2), 24);
+            //    if (isReachable) {
+            //        closestDist = dist;
+            //        closestToEntry = toEntry;
+            //    }
+            //}
+
+            Map<Position, Integer> score = new HashMap<>();
+            score.put(fromEntry.getRoot(), 0);
+            Queue<Position> visiting = new PriorityQueue<>(Comparator.comparingDouble(p -> score.getOrDefault(p, Integer.MAX_VALUE)));
+            visiting.add(fromEntry.getRoot());
+            var toChildren = to.getChildren().stream().collect(Collectors.toMap(HpaNode::getRoot, Function.identity()));
+
+            while (!visiting.isEmpty()) {
+                Position current = visiting.remove();
+                var existing = toChildren.get(current);
+                if (existing != null && score.getOrDefault(current, Integer.MAX_VALUE) <= 24) {
+                    closestToEntry = existing;
+                    break;
+                }
+
+                int currentScore = score.get(current);
+                if (currentScore > 24) {
+                    continue;
+                }
+
+                for (Position neighbour : current.getNeighbouringPositions(nb -> MapFlags.isWalkableFrom(current, cvf, true, true).test(nb))) {
+                    int newScore = currentScore + 1;
+                    int neighbourScore = score.getOrDefault(neighbour, Integer.MAX_VALUE);
+                    if (newScore < neighbourScore) {
+                        score.put(neighbour, newScore);
+                        visiting.add(neighbour);
+                    }
                 }
             }
 
